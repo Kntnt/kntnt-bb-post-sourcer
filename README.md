@@ -9,11 +9,20 @@ to add new data sources to Beaver Builder's Post, Post Slider and Post Carousel
 modules. This is an example how it can be used:
 
     add_filter( 'kntnt_bb_post_sourcer', function ( $sources ) {
-    	$sources['sourcer_example'] = [
+    
+    	// For each source, add an element with the source slug as key and
+    	// array with its settings as value.
+    	$sources['kntnt_bb_personalized_posts'] = [
+    
+    		// The name shown in user interface.
     		'name' => 'Selected posts',
-    		'toggle_fields' => [ 'sourcer_example_post_ids', 'posts_per_page' ],
+    
+    		// Which fields to be shown (see https://bit.ly/2MKvj2k)
+    		'toggle_fields' => [ 'kntnt_bb_personalized_post_ids', 'posts_per_page' ],
+    
+    		// An array of fields (see https://bit.ly/2w82X8I)
     		'fields' => [
-    			'sourcer_example_post_ids' => [
+    			'kntnt_bb_personalized_post_ids' => [
     				'type' => 'suggest',
     				'label' => 'Select posts',
     				'description' => 'Enter the titles of posts to be shown.',
@@ -21,9 +30,12 @@ modules. This is an example how it can be used:
     				'data' => 'post',
     			],
     		],
+    
+    		// Filter the arguments used by WPQuery (see https://bit.ly/2PADIUp
+    		// and https://bit.ly/2OYXHLB).
     		'loop_query_args_filter' => function ( $args, $settings, $source ) {
-    			if ( isset( $settings->sourcer_example_post_ids ) ) {
-    				$args['post__in'] = explode( ',', $settings->sourcer_example_post_ids );
+    			if ( isset( $settings->kntnt_bb_personalized_post_ids ) ) {
+    				$args['post__in'] = explode( ',', $settings->kntnt_bb_personalized_post_ids );
     				$args['post_type'] = 'any';
     				$args['orderby'] = 'post__in';
     				unset( $args['fields'] );
@@ -35,8 +47,11 @@ modules. This is an example how it can be used:
     			}
     			return $args;
     		},
+    
     	];
+    
     	return $sources;
+    
     } );
 
 ## Installation
