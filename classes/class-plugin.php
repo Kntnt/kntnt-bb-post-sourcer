@@ -8,38 +8,13 @@ class Plugin {
 
 	static private $plugin_dir;
 
-	static private $context;
+	public function __construct( $classes_to_load ) {
 
-	private $classes_to_load;
+		// This plugin's machine name a.k.a. slug.
+		self::$ns = strtr( strtolower( __NAMESPACE__ ), '\\', '_' );
 
-	public function __construct( $classes_to_load, $start_hook = 'plugins_loaded' ) {
-
-		// Set self::$ns
-		self::$ns = strtr( strtolower( __NAMESPACE__ ), '_\\', '--' );
-
-		// Set self::$plugin_dir
+		// Path to this plugin's directory relative file system root.
 		self::$plugin_dir = strtr( dirname( __DIR__ ), '\\', '/' );
-
-		// Set $self::$context
-		if ( defined( 'WP_CLI' ) && WP_CLI ) {
-			self::$context = 'cli';
-		}
-		else {
-			$ctx = $_SERVER['SCRIPT_FILENAME'];
-			$ctx = substr( $ctx, 0, - 4 );
-			$ctx = substr( $ctx, strlen( ABSPATH ) );
-			while ( ( $c = dirname( $ctx ) ) !== '.' ) {
-				$ctx = $c;
-			}
-			$ctx = str_ireplace( 'wp-', '', $ctx );
-			if ( $ctx === 'content' ) {
-				$ctx = pathinfo( $_SERVER['SCRIPT_FILENAME'], PATHINFO_FILENAME );
-			}
-			self::$context = $ctx;
-		}
-
-		// Set $this->classes_to_load
-		$this->classes_to_load = $classes_to_load;
 
 		// Install script runs only on install (not activation).
 		// Uninstall script runs "magically" on uninstall.
@@ -57,33 +32,55 @@ class Plugin {
 		} );
 
 		// Setup this plugin to run.
-		add_action( $start_hook, [ $this, 'run' ] );
-
-	}
-
-	// Loads classes.
-	public function run() {
-		if ( isset( $this->classes_to_load ) && isset( $this->classes_to_load[ self::$context ] ) ) {
-			foreach ( $this->classes_to_load[ self::$context ] as $class ) {
-				$this->instance( $class )->run();
+		foreach ( $classes_to_load as $context => $hoooks_and_classes ) {
+			if ( $this->is_context( $context ) ) {
+				foreach ( $hoooks_and_classes as $hook => $classes ) {
+					foreach ( $classes as $class ) {
+						add_action( $hook, [ $this->instance( $class ), 'run' ] );
+					}
+				}
 			}
+
 		}
+
 	}
 
-	// Namespace of plugin.
+	// Name space of plugin.
 	static public function ns() {
 		return self::$ns;
 	}
 
-	// Absolute path of plugin directory. No trailing slash.
+	// This plugin's path relative file system root, with no trailing slash.
+	// If $rel_path is given, with or without leading slash, it is appended
+	// with leading slash.
 	static public function plugin_dir( $rel_path = '' ) {
-		return rtrim( self::$plugin_dir, '/' ) . '/' . ltrim( $rel_path, '/' );
+		return self::str_join( self::$plugin_dir, $rel_path );
 	}
 
-	// Returns the context in which the plugin is executed.
-	// Possible vales includes index, admin, login, cron and wp-cli.
-	static public function context() {
-		return self::$context;
+	// This plugin's path relative WordPress root, with no leading or trailing
+	// slash. If $rel_path is given, with or without leading slash, it is
+	// appended with leading slash.
+	static public function rel_plugin_dir( $rel_path = '' ) {
+		return self::str_join( substr( self::$plugin_dir, strlen( ABSPATH ) - 1 ), ltrim( $rel_path, '/' ), '/' );
+	}
+
+	// The WordPress' root relative file system root, with no trailing slash.
+	// If $rel_path is given, with or without leading slash, it is appended
+	// with leading slash.
+	static public function rel_wp_dir( $rel_path = '' ) {
+		return self::str_join( ABSPATH, ltrim( $rel_path, '/' ), '/' );
+	}
+
+	// Returns the truth value of the statement that we are running in the
+	// context asserted by $context.
+	static public function is_context( $context ) {
+		return 'any' == $context ||
+		       'public' == $context && ( ! defined( 'WP_ADMIN' ) || ! WP_ADMIN ) ||
+		       'ajax' == $context && defined( 'DOING_AJAX' ) && DOING_AJAX ||
+		       'admin' == $context && defined( 'WP_ADMIN' ) && WP_ADMIN ||
+		       'cron' == $context && defined( 'DOING_CRON' ) && DOING_CRON ||
+		       'cli' == $context && defined( 'WP_CLI' ) && WP_CLI ||
+		       isset( $_SERVER ) && isset( $_SERVER['SCRIPT_FILENAME'] ) && pathinfo( $_SERVER['SCRIPT_FILENAME'], PATHINFO_FILENAME ) == $context;
 	}
 
 	// Returns an instance of the class with the provided name.
@@ -108,6 +105,13 @@ class Plugin {
 			return $opt;
 		}
 		return isset( $opt[ $key ] ) ? $opt[ $key ] : $default;
+	}
+
+	public static final function str_join( $lhs, $rhs, $separator = '/' ) {
+		if ( $lhs && $rhs ) {
+			$lhs = rtrim( $lhs, $separator ) . $separator . ltrim( $rhs, $separator );
+		}
+		return $lhs;
 	}
 
 }

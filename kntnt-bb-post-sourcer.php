@@ -18,4 +18,16 @@ defined( 'WPINC' ) || die;
 
 require_once __DIR__ . '/classes/class-plugin.php';
 
-new Plugin( [ 'index' => [ 'Sourcer' ] ] );
+new Plugin( [
+	'public' => [
+		'init' => [
+			'UI',
+			'Sourcer',
+		],
+	],
+	'ajax' => [
+		'admin_init' => [
+			'Sourcer',
+		],
+	],
+] );
